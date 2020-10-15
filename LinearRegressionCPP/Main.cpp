@@ -17,8 +17,9 @@ int main()
     MatrixXd* norm_features = nullptr;
     VectorXd* norm_labels = nullptr;
 
-    string filename = "..\\LinearRegressionCPP\\log10.csv";
-    AndoRegression* andoRegression = new(nothrow) AndoRegression(filename);
+    string filename = "C:\\Users\\amikesel\\OneDrive\\Engineering\\MachineLearning\\Projects\\pytorch_test\\education_vs_poverty_log10.csv";
+    string costfile = "C:\\users\\amikesel\\Desktop\\cppdata.csv";
+    AndoRegression* andoRegression = new(nothrow) AndoRegression(filename, costfile);
 
     // Dump a bunch of properties to make sure we're initialzed correctly and the data looks right
     string success_result = andoRegression->IsConstructed() ? "successfully" : "unsuccessfully";
@@ -37,16 +38,8 @@ int main()
 
     cout << "Running linear regression with original data ..." << endl;
 
-    andoRegression->Regress(features, labels, 0.00001, 0.000000000001, 100000000);
-
-    // Run with normalized data
-    //andoRegression->Normalize(&norm_features, &norm_labels);
-
-    //cout << "Normalized Features:\n" << *norm_features << endl;
-    //cout << "Normalized Values:\n" << *norm_labels << endl;
-
-    //cout << "Running linear regression with normalized data ..." << endl;
-    //andoRegression->Regress(norm_features, norm_labels, 0.0001, 0.00000000001, 100000000);
+    // alpha, epsilon, epochs: 0.00001, 0.000000000001, 100000000
+    andoRegression->Regress(features, labels, 0.01, 0.000000001, 10000000);
 
     // Release all of our resources
     if (andoRegression && andoRegression->IsConstructed())

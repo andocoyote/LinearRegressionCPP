@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <list>
@@ -16,7 +17,7 @@ class AndoRegression
 {
 public:
     AndoRegression();
-    AndoRegression(string FileName);
+    AndoRegression(string FileName, string CostFile);
 
     ~AndoRegression();
 
@@ -39,6 +40,7 @@ private:
     bool ContainsAlpha(string str);
 
     string filename = "";
+    string costfile = "";
     bool isConstructed = false;
     MatrixXd* matrix = nullptr;
     VectorXd* thetas = nullptr;
