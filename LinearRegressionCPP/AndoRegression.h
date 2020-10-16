@@ -42,7 +42,7 @@ private:
     string filename = "";
     string costfile = "";
     bool isConstructed = false;
-    MatrixXd* matrix = nullptr;
+    MatrixXd* data = nullptr;
     VectorXd* thetas = nullptr;
     MatrixXd* features = nullptr;
     VectorXd* labels = nullptr;

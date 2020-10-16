@@ -15,7 +15,7 @@ AndoRegression::AndoRegression(string FileName, string CostFile)
 
 AndoRegression::~AndoRegression()
 {
-    if (matrix) delete matrix;
+    if (data) delete data;
     if (thetas) delete thetas;
     if (features) delete features;
     if (labels) delete labels;
@@ -87,29 +87,58 @@ bool AndoRegression::ProcessDataFile()
 
         colcount = tokens.size() / rowcount;
 
-        matrix = new(nothrow) MatrixXd(rowcount, colcount);
+        // Instantiate matrix to hold all of the data read from the file
+        data = new(nothrow) MatrixXd(rowcount, colcount);
+        if (!data)
+        {
+            cout << "Error: Failed to instantiate matrix data matrix." << endl;
+            success = false;
+            goto cleanup;
+        }
+
+        // Intantiate vector to hold our thetas
         thetas = new(nothrow) VectorXd(2);
+        if (!thetas)
+        {
+            cout << "Error: Failed to instantiate thetas vector." << endl;
+            success = false;
+            goto cleanup;
+        }
 
         // Fill the matrix with the tokens parsed from the data file
-        for (int i = 0; i < matrix->rows(); i++)
+        for (int i = 0; i < data->rows(); i++)
         {
-            for (int j = 0; j < matrix->cols(); j++)
+            for (int j = 0; j < data->cols(); j++)
             {
-                (*matrix)(i, j) = tokens.front();
+                (*data)(i, j) = tokens.front();
                 tokens.pop_front();
             }
         }
 
         // Create a matrix of features where the first column is ones
         features = new(nothrow) MatrixXd(rowcount, 2);
+        if (!features)
+        {
+            cout << "Error: Failed to instantiate features matrix." << endl;
+            success = false;
+            goto cleanup;
+        }
+
         features->col(0) = VectorXf::Ones(rowcount).cast<double>();
-        features->col(1) = matrix->col(0);
+        features->col(1) = data->col(0);
 
-        labels = new(nothrow) VectorXd(matrix->col(1));
+        labels = new(nothrow) VectorXd(data->col(1));
+        if (!labels)
+        {
+            cout << "Error: Failed to instantiate labels vector." << endl;
+            success = false;
+            goto cleanup;
+        }
 
-        matrixSize = std::make_tuple(matrix->rows(), matrix->cols());
-        featureSize = std::make_tuple(features->rows(), features->cols());
-        labelSize = std::make_tuple(labels->rows(), labels->cols());
+        // Create the tuples which hold the sizes of our respective matrices and vectors
+        matrixSize = std::make_tuple((int)data->rows(), (int)data->cols());
+        featureSize = std::make_tuple((int)features->rows(), (int)features->cols());
+        labelSize = std::make_tuple((int)labels->rows(), (int)labels->cols());
     }
     else
     {
@@ -147,23 +176,48 @@ void AndoRegression::Regress(MatrixXd* X, VectorXd* y, double alpha, double epsi
 
     cout << "Initial thetas: " << (*thetas)(0) << " " << (*thetas)(1) << endl;
 
+    VectorXd* yhat = nullptr;
+    VectorXd* error = nullptr;
+    VectorXd* error_squared = nullptr;
+
     // Calculate parameters theta and cost
     for (int i = 0; i < epochs; i++)
     {
-        VectorXd yhat = (*X) * (*thetas);
-        VectorXd error = yhat - *y;
-        VectorXd error_squared = error.unaryExpr([](double d) {return std::pow(d, 2); });
+        // Compute yhat (our predictions)
+        yhat = new VectorXd((*X) * (*thetas));
+        if (!yhat)
+        {
+            cout << "Error: Failed to instantiate yhat vector." << endl;
+            goto cleanup;
+        }
 
-        // Compute the cost
+        // Compute the error
+        error = new VectorXd(*yhat - *y);
+        if (!error)
+        {
+            cout << "Error: Failed to instantiate error vector." << endl;
+            goto cleanup;
+        }
+
+        // Compute error squared
+        error_squared = new VectorXd(error->unaryExpr([](double d) {return std::pow(d, 2); }));
+        if (!error_squared)
+        {
+            cout << "Error: Failed to instantiate error_squared vector." << endl;
+            goto cleanup;
+        }
+
+        // Compute the cost/loss
         prev_cost = cost;
-        cost = error_squared.mean();
+        cost = error_squared->mean();
 
-        // Compute our new thetas
-        (*thetas) = (*thetas) - (alpha * ((*X).transpose() * error) / (*X).rows());
+        // Our algorithm in pseudo-code: the average of our gradients * learning rate
+        //   thetas = thetas - alpha * ((X' * (X*thetas-y)) / m);
+        (*thetas) = (*thetas) - (alpha * ((*X).transpose() * *error) / (*X).rows());
 
         cout << std::setprecision(12) << "Cost: " << cost << " Previous Cost: " << prev_cost << endl;
 
-        // Write every 1000th cost and thetas to a CSV file for graphing
+        // Write every nth cost and thetas to a CSV file for graphing
         if (i % 1000 == 0 && costfile.is_open())
         {
             costfile << (*thetas)(0) << "," << (*thetas)(1) << "," << fabs(cost) << endl;
@@ -178,7 +232,31 @@ void AndoRegression::Regress(MatrixXd* X, VectorXd* y, double alpha, double epsi
             cout << "Theta1 which minimizes the cost: " << (*thetas)(1) << endl;
             break;
         }
+
+        if (yhat)
+        {
+            delete yhat;
+            yhat = nullptr;
+        }
+
+        if (error)
+        {
+            delete error;
+            error = nullptr;
+        }
+
+        if (error_squared)
+        {
+            delete error_squared;
+            error_squared = nullptr;
+        }
     }
+
+cleanup:
+
+    if (yhat) delete yhat;
+    if (error) delete error;
+    if (error_squared) delete error_squared;
 
     costfile.close();
 }
